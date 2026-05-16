@@ -341,6 +341,10 @@ export default function ChatPage() {
               <a href="https://www.phud.me" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-gray-600 transition-colors">
                 phud.me
               </a>
+              {" "}·{" "}
+              <a href="https://github.com/r14084/phud-to-thaillm" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-gray-600 transition-colors">
+                github
+              </a>
             </p>
           </div>
         </div>
