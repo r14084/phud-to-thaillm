@@ -12,22 +12,23 @@ function parseThink(content: string): { think: string; reply: string } {
 }
 
 const ALL_MODELS = [
-  { id: "openthaigpt", label: "OpenThaiGPT", by: "AIEAT",   toolSupport: false, pptxSupport: false },
-  { id: "pathumma",    label: "Pathumma",    by: "NECTEC",  toolSupport: true,  pptxSupport: true  },
-  { id: "typhoon",     label: "Typhoon",     by: "SCB 10X", toolSupport: true,  pptxSupport: true  },
-  { id: "thalle",      label: "THaLLE",      by: "KBTG",    toolSupport: true,  pptxSupport: false },
+  { id: "openthaigpt", label: "OpenThaiGPT", by: "AIEAT",   toolSupport: false, pptxSupport: false, pySupport: false },
+  { id: "pathumma",    label: "Pathumma",    by: "NECTEC",  toolSupport: true,  pptxSupport: true,  pySupport: false },
+  { id: "typhoon",     label: "Typhoon",     by: "SCB 10X", toolSupport: true,  pptxSupport: true,  pySupport: true  },
+  { id: "thalle",      label: "THaLLE",      by: "KBTG",    toolSupport: true,  pptxSupport: false, pySupport: false },
 ];
 
-type Mode = "chat" | "xlsx" | "docx" | "pptx";
+type Mode = "chat" | "xlsx" | "docx" | "pptx" | "py";
 
 interface FilePreview {
-  mode: "xlsx" | "docx" | "pptx";
+  mode: "xlsx" | "docx" | "pptx" | "py";
   filename: string;
   fileBase64: string;
   headers?: string[];
   rows?: unknown[][];
   sections?: { type: string; text: string; level?: number }[];
   slides?: { title: string; content?: string; bullet_points?: string[] }[];
+  code?: string;
 }
 
 interface Message {
@@ -61,6 +62,12 @@ const SUGGESTED: Record<Mode, string[]> = {
     "สไลด์รายงานผลประจำไตรมาส",
     "นำเสนอแนะนำบริษัทพร้อม Mission และ Vision",
   ],
+  py: [
+    "เขียน script อ่านไฟล์ CSV และคำนวณค่าเฉลี่ย",
+    "สร้าง Flask API พื้นฐานที่มี endpoint /hello",
+    "Web scraper ดึงหัวข้อข่าวจาก URL ที่กำหนด",
+    "เกมทายเลขสุ่ม 1-100 พร้อมจำกัดจำนวนครั้ง",
+  ],
 };
 
 const MODE_META: Record<Mode, { icon: string; label: string; color: string; btnClass: string; chipClass: string; tabClass: string }> = {
@@ -68,6 +75,7 @@ const MODE_META: Record<Mode, { icon: string; label: string; color: string; btnC
   xlsx: { icon: "📊", label: "XLSX", color: "green",  btnClass: "bg-green-600 hover:bg-green-700 active:bg-green-800",   chipClass: "bg-green-100 text-green-700",   tabClass: "bg-green-100 text-green-700" },
   docx: { icon: "📄", label: "DOCX", color: "indigo", btnClass: "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800", chipClass: "bg-indigo-100 text-indigo-700", tabClass: "bg-indigo-100 text-indigo-700"},
   pptx: { icon: "📑", label: "PPTX", color: "orange", btnClass: "bg-orange-500 hover:bg-orange-600 active:bg-orange-700", chipClass: "bg-orange-100 text-orange-700", tabClass: "bg-orange-100 text-orange-700"},
+  py:   { icon: "🐍", label: "Python", color: "yellow", btnClass: "bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700", chipClass: "bg-yellow-100 text-yellow-800", tabClass: "bg-yellow-100 text-yellow-800"},
 };
 
 const MODE_PLACEHOLDER: Record<Mode, string> = {
@@ -75,6 +83,7 @@ const MODE_PLACEHOLDER: Record<Mode, string> = {
   xlsx: "บอกว่าต้องการตารางแบบไหน เช่น 'รายงานยอดขาย มีคอลัมน์ สินค้า จำนวน ราคา 5 แถว'",
   docx: "บอกว่าต้องการเอกสารแบบไหน เช่น 'ข้อเสนอโปรเจกต์ มีบทนำ วัตถุประสงค์ และไทม์ไลน์'",
   pptx: "บอกว่าต้องการ Presentation แบบไหน เช่น 'นำเสนอ AI ในประเทศไทย 5 สไลด์'",
+  py:   "บอกว่าต้องการ Python script แบบไหน เช่น 'อ่านไฟล์ CSV และคำนวณค่าเฉลี่ย'",
 };
 
 function downloadFile(filename: string, base64: string, mime: string) {
@@ -206,6 +215,34 @@ function DocxPreview({ sections, filename, fileBase64 }: {
   );
 }
 
+function PyPreview({ code, filename, fileBase64 }: {
+  code: string;
+  filename: string;
+  fileBase64: string;
+}) {
+  const lineCount = code ? code.split("\n").length : 0;
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-yellow-200 bg-gray-900 px-4 py-3 max-h-80 overflow-auto">
+        <pre className="text-xs text-gray-100 font-mono leading-relaxed whitespace-pre">
+          <code>{code}</code>
+        </pre>
+      </div>
+      <div className="flex items-center gap-2 text-xs text-gray-400">
+        <span className="font-medium">{lineCount} lines</span>
+        <span>·</span>
+        <span>Python</span>
+      </div>
+      <button
+        onClick={() => downloadFile(filename, fileBase64, "text/x-python")}
+        className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+      >
+        ⬇ Download {filename}
+      </button>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const [mode, setMode]         = useState<Mode>("chat");
   const [model, setModel]       = useState("pathumma");
@@ -218,6 +255,7 @@ export default function ChatPage() {
   const visibleModels =
     mode === "chat" ? ALL_MODELS :
     mode === "pptx" ? ALL_MODELS.filter((m) => m.pptxSupport) :
+    mode === "py"   ? ALL_MODELS.filter((m) => m.pySupport)   :
     ALL_MODELS.filter((m) => m.toolSupport);
 
   useEffect(() => {
@@ -298,7 +336,8 @@ export default function ChatPage() {
           fileBase64: data.fileBase64,
           ...(mode === "xlsx" ? { headers: data.preview.headers, rows: data.preview.rows } :
               mode === "pptx" ? { slides: data.preview.slides } :
-                                { sections: data.preview.sections }),
+              mode === "docx" ? { sections: data.preview.sections } :
+                                { code: data.preview.code }),
         };
         setMessages((prev) => {
           const updated = [...prev];
@@ -395,7 +434,8 @@ export default function ChatPage() {
                 {mode === "chat" ? "ยินดีต้อนรับสู่ ThaiLLM Chat" :
                  mode === "xlsx" ? "สร้างไฟล์ Excel (XLSX)" :
                  mode === "docx" ? "สร้างเอกสาร Word (DOCX)" :
-                                   "สร้าง PowerPoint (PPTX)"}
+                 mode === "pptx" ? "สร้าง PowerPoint (PPTX)" :
+                                   "สร้าง Python script (.py)"}
               </h2>
               {mode === "chat" ? (
                 <p className="text-gray-500 text-sm sm:text-base mb-1">
@@ -469,9 +509,15 @@ export default function ChatPage() {
                       filename={msg.filePreview.filename}
                       fileBase64={msg.filePreview.fileBase64}
                     />
-                  ) : (
+                  ) : msg.filePreview.mode === "docx" ? (
                     <DocxPreview
                       sections={msg.filePreview.sections!}
+                      filename={msg.filePreview.filename}
+                      fileBase64={msg.filePreview.fileBase64}
+                    />
+                  ) : (
+                    <PyPreview
+                      code={msg.filePreview.code!}
                       filename={msg.filePreview.filename}
                       fileBase64={msg.filePreview.fileBase64}
                     />
@@ -520,7 +566,7 @@ export default function ChatPage() {
 
           {/* Mode tabs */}
           <div className="flex items-center gap-1">
-            {(["chat", "xlsx", "docx", "pptx"] as Mode[]).map((m) => (
+            {(["chat", "xlsx", "docx", "pptx", "py"] as Mode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
@@ -547,6 +593,7 @@ export default function ChatPage() {
             mode === "chat"  ? "border-gray-300 focus-within:border-blue-400   focus-within:ring-blue-100"   :
             mode === "xlsx"  ? "border-gray-300 focus-within:border-green-400  focus-within:ring-green-100"  :
             mode === "pptx"  ? "border-gray-300 focus-within:border-orange-400 focus-within:ring-orange-100" :
+            mode === "py"    ? "border-gray-300 focus-within:border-yellow-400 focus-within:ring-yellow-100" :
                                "border-gray-300 focus-within:border-indigo-400 focus-within:ring-indigo-100"
           }`}>
             <textarea
@@ -575,6 +622,9 @@ export default function ChatPage() {
             )}
             {(mode === "xlsx" || mode === "docx") && (
               <span className="ml-1.5 text-amber-500">· โหมดไฟล์ต้องใช้ Typhoon / Pathumma / THaLLE</span>
+            )}
+            {mode === "py" && (
+              <span className="ml-1.5 text-amber-500">· Python mode: Typhoon เท่านั้น</span>
             )}
           </p>
         </div>
