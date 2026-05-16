@@ -38,6 +38,9 @@ yarn-error.log*
 CLAUDE.md
 AGENTS.md
 
+# Internal docs
+docs/
+
 # vercel
 .vercel
 
